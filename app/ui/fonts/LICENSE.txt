@@ -1,0 +1,2 @@
+﻿SIL Open Font License 1.1 - see https://openfontlicense.org for full text.
+Fonts: Poppins, DM Sans, Plus Jakarta Sans (Google Fonts).
