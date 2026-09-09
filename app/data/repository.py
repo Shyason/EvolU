@@ -122,6 +122,9 @@ class TaskRepository:
         habit_id: int | None = None,
         notes: str | None = None,
         reminder_minutes_before: int | None = None,
+        is_recurring: bool = False,
+        recurrence_type: str | None = None,
+        recurrence_interval: int = 1,
     ) -> Task:
         with SessionLocal() as session:
             task = Task(
@@ -134,6 +137,9 @@ class TaskRepository:
                 habit_id=habit_id,
                 notes=notes,
                 reminder_minutes_before=reminder_minutes_before,
+                is_recurring=is_recurring,
+                recurrence_type=recurrence_type,
+                recurrence_interval=recurrence_interval,
             )
             session.add(task)
             session.commit()
@@ -163,13 +169,27 @@ class TaskRepository:
         with SessionLocal() as session:
             return session.get(Task, task_id)
 
-    def toggle_complete(self, task_id: int) -> Task | None:
+    def toggle_complete(self, task_id):
         with SessionLocal() as session:
             task = session.get(Task, task_id)
             if task is None:
                 return None
-            task.is_completed = not task.is_completed
-            task.completed_at = dt.datetime.utcnow() if task.is_completed else None
+
+            if not task.is_completed:
+                if task.is_recurring and task.recurrence_type and task.due_date:
+                    from app.business.task_recurrence import compute_next_due_date
+                    task.due_date = compute_next_due_date(
+                        task.due_date, task.recurrence_type, task.recurrence_interval
+                    )
+                    task.is_completed = False
+                    task.completed_at = None
+                else:
+                    task.is_completed = True
+                    task.completed_at = dt.datetime.utcnow()
+            else:
+                task.is_completed = False
+                task.completed_at = None
+
             session.commit()
             session.refresh(task)
             return task

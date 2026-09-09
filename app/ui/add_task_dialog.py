@@ -63,6 +63,16 @@ class AddTaskDialog(QDialog):
         self.priority_input.setCurrentText("medium")
         form.addRow("Priority:", self.priority_input)
 
+        repeat_row = QHBoxLayout()
+        self.is_recurring_checkbox = QCheckBox("Repeats")
+        self.recurrence_type_input = QComboBox()
+        self.recurrence_type_input.addItems(["daily", "weekly", "monthly"])
+        self.recurrence_type_input.setEnabled(False)
+        self.is_recurring_checkbox.toggled.connect(self.recurrence_type_input.setEnabled)
+        repeat_row.addWidget(self.is_recurring_checkbox)
+        repeat_row.addWidget(self.recurrence_type_input)
+        form.addRow(repeat_row)
+
         self.tag_input = QComboBox()
         self._reload_tags()
         self.tag_input.currentTextChanged.connect(self._handle_tag_selection)
@@ -95,6 +105,14 @@ class AddTaskDialog(QDialog):
             if task.notes:
                 self.notes_input.setPlainText(task.notes)
 
+            if task.is_recurring:
+                self.is_recurring_checkbox.setChecked(True)
+                self.recurrence_type_input.setEnabled(True)
+                if task.recurrence_type:
+                    index = self.recurrence_type_input.findText(task.recurrence_type)
+                    if index >= 0:
+                        self.recurrence_type_input.setCurrentIndex(index)
+
     def _reload_tags(self) -> None:
         self.tag_input.blockSignals(True)  # avoid re-triggering the selection handler while rebuilding
         self.tag_input.clear()
@@ -125,7 +143,12 @@ class AddTaskDialog(QDialog):
         if not title:
             return
 
-        due_date = self.date_input.date().toPython() if self.has_due_date.isChecked() else None
+        if self.has_due_date.isChecked():
+            due_date = self.date_input.date().toPython()
+        elif self.is_recurring_checkbox.isChecked():
+            due_date = dt.date.today()
+        else:
+            due_date = None
         due_time = self.time_input.time().toPython() if self.has_due_time.isChecked() else None
         tag_id = self.tag_input.currentData()
         if tag_id in ("new", "manage"):
@@ -138,6 +161,9 @@ class AddTaskDialog(QDialog):
             priority=self.priority_input.currentText(),
             tag_id=tag_id,
             notes=self.notes_input.toPlainText().strip() or None,
+            is_recurring=self.is_recurring_checkbox.isChecked(),
+            recurrence_type=self.recurrence_type_input.currentText() if self.is_recurring_checkbox.isChecked() else None,
+            recurrence_interval=1,
         )
 
         if self.editing_task:

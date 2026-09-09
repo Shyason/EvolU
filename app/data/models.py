@@ -61,6 +61,10 @@ class Task(Base):
     tag: Mapped[Tag | None] = relationship()
     habit: Mapped[Habit | None] = relationship(back_populates="generated_tasks")
 
+    is_recurring: Mapped[bool] = mapped_column(default=False)
+    recurrence_type: Mapped[str | None] = mapped_column(String(20), nullable=True)  # "daily" / "weekly" / "monthly"
+    recurrence_interval: Mapped[int] = mapped_column(default=1)
+
 
 class Habit(Base):
     __tablename__ = "habits"
